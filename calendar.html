@@ -239,7 +239,7 @@
     </div>
 
     <nav class="app-nav">
-        <div class="app-nav-title">Master Sheet Overview</div>
+        <div class="app-nav-title">Antigravity - Recurring Payment Calendar</div>
         <div class="nav-links">
             <a href="index.html" id="link-table">Table View</a>
             <a href="#" class="active">Calendar View</a>
@@ -256,6 +256,8 @@
         <div class="calendar-title" id="calendar-title"></div>
 
         <div class="nav-group">
+            <button id="view-day">Day</button>
+            <button id="view-week">Week</button>
             <button id="view-month" class="active">Month</button>
             <button id="view-year">Year</button>
         </div>
@@ -598,8 +600,14 @@
         // -----------------------------
         // Logic: Update Title & UI
         // -----------------------------
+        // -----------------------------
+        // Logic: Update Title & UI
+        // -----------------------------
         function updateTitle() {
-            const date = calendar.getDate(); // Returns Date object
+            // Toast UI Calendar returns a custom TZDate object, convert to native Date
+            const dt = calendar.getDate();
+            const date = new Date(dt.toDate());
+
             const year = date.getFullYear();
             const month = date.toLocaleString('default', { month: 'long' });
 
