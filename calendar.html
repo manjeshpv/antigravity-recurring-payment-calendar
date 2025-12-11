@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Lightweight Calendar</title>
+
+    <!-- Toast UI Calendar CSS -->
+    <link rel="stylesheet" href="https://uicdn.toast.com/calendar/latest/toastui-calendar.min.css" />
+
+    <style>
+        :root {
+            --primary: #007bff;
+            --bg: #f5f5f5;
+            --white: #ffffff;
+            --text: #333;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Navigation Bar */
+        nav {
+            background: var(--white);
+            padding: 15px 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .nav-group {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .nav-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            min-width: 200px;
+            text-align: center;
+        }
+
+        button {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            background: var(--white);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background: #f8f9fa;
+            border-color: #ccc;
+        }
+
+        button.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .icon-btn {
+            padding: 8px 12px;
+        }
+
+        /* Main Content Area */
+        main {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            padding: 20px;
+        }
+
+        /* Calendar View */
+        #calendar {
+            height: 100%;
+            background: var(--white);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            /* Toast UI override */
+            border: none !important;
+        }
+
+        /* Year View (Hidden by default) */
+        #year-view {
+            display: none;
+            height: 100%;
+            overflow-y: auto;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            padding-bottom: 20px;
+        }
+
+        #year-view.active {
+            display: grid;
+        }
+
+        /* Updates for dark mode compatibility if needed later */
+        .month-card {
+            background: var(--white);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            border: 1px solid #eee;
+        }
+
+        .month-name {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: var(--primary);
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+        }
+
+        .event-item {
+            padding: 6px 10px;
+            margin-bottom: 6px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            display: flex;
+            justify-content: space-between;
+            border-left: 3px solid transparent;
+        }
+
+        .total-row {
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px dashed #ddd;
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav>
+        <div class="nav-group">
+            <button class="icon-btn" id="btn-prev">&lt;</button>
+            <button id="btn-today">Today</button>
+            <button class="icon-btn" id="btn-next">&gt;</button>
+        </div>
+
+        <div class="nav-title" id="calendar-title"></div>
+
+        <div class="nav-group">
+            <button id="view-month" class="active">Month</button>
+            <button id="view-year">Year</button>
+        </div>
+    </nav>
+
+    <main>
+        <div id="calendar"></div>
+        <div id="year-view"></div>
+    </main>
+
+    <!-- Toast UI Calendar JS -->
+    <script src="https://uicdn.toast.com/calendar/latest/toastui-calendar.min.js"></script>
+    <!-- PapaParse for CSV -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <!-- Load Events Data (Optional Fallback) -->
+    <script src="events.js"></script>
+
+    <script>
+        const Calendar = tui.Calendar;
+
+        // -----------------------------
+        // Helper: Expand Recurring Events
+        // -----------------------------
+        function expandEvents(originalEvents) {
+            let expanded = [];
+
+            if (!originalEvents) return [];
+
+            originalEvents.forEach(event => {
+                expanded.push(event);
+
+                if (event.recurrence === 'monthly') {
+                    const startDate = new Date(event.start);
+                    const endDate = new Date(event.end);
+
+                    // Generate for next 12 months
+                    for (let i = 1; i <= 12; i++) {
+                        // Clone the event
+                        let newEvent = { ...event };
+
+                        // Update ID to be unique
+                        newEvent.id = event.id + '_recur_' + i;
+
+                        // Calculate new dates
+                        let nextStart = new Date(startDate);
+                        nextStart.setMonth(startDate.getMonth() + i);
+
+                        let nextEnd = new Date(endDate);
+                        nextEnd.setMonth(endDate.getMonth() + i);
+
+                        // Convert back to string format if needed or keep as objects
+                        // Toast UI handles Date objects well, or ISO strings
+                        newEvent.start = nextStart.toISOString();
+                        newEvent.end = nextEnd.toISOString();
+
+                        expanded.push(newEvent);
+                    }
+                }
+            });
+
+            return expanded;
+        }
+
+        // Global array to hold all events for year view
+        const events = [];
+
+        // -----------------------------
+        // Initialize Calendar
+        // -----------------------------
+        const calendar = new Calendar('#calendar', {
+            defaultView: 'month',
+            usageStatistics: false,
+            useDetailPopup: true,
+            month: {
+                dayNames: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+                visibleWeeksCount: 0,
+            },
+            timezone: {
+                zones: [{ timezoneName: 'Asia/Kolkata' }]
+            }
+        });
+
+        // -----------------------------
+        // Helper: Parse Date & Time
+        // Combine "1/1/2025" and "9:00:00 am" -> ISO String
+        // -----------------------------
+        function parseDateTime(dateStr, timeStr) {
+            try {
+                // Parse Date: 1/1/2025 -> [1, 1, 2025]
+                const [month, day, year] = dateStr.split('/');
+
+                // Parse Time: 9:00:00 am -> 24h format
+                let [time, modifier] = timeStr.trim().split(' ');
+                let [hours, minutes, seconds] = time.split(':');
+
+                if (hours === '12') hours = '00';
+                if (modifier.toLowerCase() === 'pm') hours = parseInt(hours, 10) + 12;
+
+                // Construct Date Object
+                // Note: Month is 0-indexed in JS Date
+                const dt = new Date(year, month - 1, day, hours, minutes, seconds);
+                return dt.toISOString();
+            } catch (e) {
+                console.error("Error parsing date/time:", dateStr, timeStr, e);
+                return null;
+            }
+        }
+
+        // -----------------------------
+        // Fetch & Load Events
+        // -----------------------------
+        const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1Dpl_UdIL_TS-6pJMQosp3h1clHiMY7imtCMiidFuhzY/export?format=csv';
+
+        function loadGoogleSheetEvents() {
+            Papa.parse(SHEET_URL, {
+                download: true,
+                header: true,
+                skipEmptyLines: true,
+                complete: function (results) {
+                    console.log("Sheet Loaded:", results.data);
+
+                    const sheetEvents = results.data.map((row, index) => {
+                        // Map CSV columns to Calendar Event Object
+                        // CSV: Event Title, Date, Start Time, End Time, Description, Location, Guests, Event Color
+
+                        // Skip if missing essential data
+                        if (!row['Event Title'] || !row['Date']) return null;
+
+                        const startISO = parseDateTime(row['Date'], row['Start Time']);
+                        const endISO = parseDateTime(row['Date'], row['End Time']);
+
+                        return {
+                            id: 'sheet-' + index,
+                            calendarId: 'google-sheet',
+                            title: row['Event Title'],
+                            body: row['Description'] || '',
+                            location: row['Location'] || '',
+                            start: startISO,
+                            end: endISO,
+                            category: 'time',
+                            backgroundColor: row['Event Color'] || '#007bff',
+                            attendees: row['Guests'] ? row['Guests'].split(',') : []
+                        };
+                    }).filter(e => e !== null);
+
+                    // Combine with local events if needed
+                    // existing 'expandEvents(rawEvents)' from prev step could be merged here
+                    // For now, let's show BOTH:
+
+
+                    // 2. Add Sheet Events
+                    const allEvents = [...sheetEvents];
+
+                    calendar.createEvents(allEvents);
+
+                    // Also trigger Year View update in case we are in that view
+                    events.length = 0; // Clear proxy array
+                    events.push(...allEvents); // Update global events array for Year View
+                    updateTitle();
+                },
+                error: function (err) {
+                    console.error("Error loading sheet:", err);
+                    alert("Failed to load Google Sheet. Check console for CORS or network errors.");
+                }
+            });
+        }
+
+        // Start Loading
+        loadGoogleSheetEvents();
+
+
+        // -----------------------------
+        // State & DOM Elements
+        // -----------------------------
+        const elTitle = document.getElementById('calendar-title');
+        const elYearView = document.getElementById('year-view');
+        const elCalendar = document.getElementById('calendar');
+
+        const btnMonth = document.getElementById('view-month');
+        const btnYear = document.getElementById('view-year');
+
+        let currentView = 'month'; // 'month' or 'year'
+
+        // -----------------------------
+        // Logic: Update Title & UI
+        // -----------------------------
+        function updateTitle() {
+            const date = calendar.getDate(); // Returns Date object
+            const year = date.getFullYear();
+            const month = date.toLocaleString('default', { month: 'long' });
+
+            if (currentView === 'month') {
+                elTitle.textContent = `${month} ${year}`;
+            } else {
+                elTitle.textContent = `${year}`;
+            }
+        }
+
+        // -----------------------------
+        // Logic: Render Year View
+        // -----------------------------
+        function renderYearView() {
+            // Clear previous content
+            elYearView.innerHTML = '';
+
+            const currentYear = calendar.getDate().getFullYear();
+            const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+            // 1. Filter events for this year
+            // Note: Simple string matching on ISO date for this demo
+            const yearsEvents = events.filter(e => e.start.startsWith(currentYear.toString()));
+
+            // 2. Build Month Cards
+            months.forEach((monthName, index) => {
+                // Filter events for this month (index+1)
+                // padStart(2, '0') ensures 01, 02...
+                const monthStr = `${currentYear}-${(index + 1).toString().padStart(2, '0')}`;
+                const monthEvents = yearsEvents.filter(e => e.start.startsWith(monthStr));
+
+                // Create Card HTML
+                const card = document.createElement('div');
+                card.className = 'month-card';
+
+                let html = `<div class="month-name">${monthName}</div>`;
+
+                let totalAmount = 0;
+
+                if (monthEvents.length === 0) {
+                    html += `<div style="color:#999; font-style:italic; font-size:0.9rem;">No events</div>`;
+                } else {
+                    monthEvents.forEach(e => {
+                        // Check if it's a payment to sum up amount
+                        let amountStr = "";
+                        if (e.amount) {
+                            // clear '$' for math (very basic parsing)
+                            const val = parseFloat(e.amount.replace('$', ''));
+                            if (!isNaN(val)) totalAmount += val;
+                            amountStr = `<span style="font-weight:bold;">${e.amount}</span>`;
+                        }
+
+                        html += `
+                        <div class="event-item" style="border-left-color: ${e.backgroundColor || '#ccc'}">
+                            <span>${e.title}</span>
+                            ${amountStr}
+                        </div>
+                    `;
+                    });
+                }
+
+                // Add Total Footer
+                if (totalAmount > 0) {
+                    html += `
+                    <div class="total-row">
+                        <span>Total Payments</span>
+                        <span>$${totalAmount.toFixed(2)}</span>
+                    </div>
+                `;
+                }
+
+                card.innerHTML = html;
+                elYearView.appendChild(card);
+            });
+        }
+
+        // -----------------------------
+        // Logic: Navigation Handlers
+        // -----------------------------
+        function onClickDetails(e) {
+            const action = e.target.closest('button').id;
+
+            switch (action) {
+                case 'btn-prev':
+                    calendar.prev();
+                    break;
+                case 'btn-next':
+                    calendar.next();
+                    break;
+                case 'btn-today':
+                    calendar.today();
+                    break;
+                case 'view-month':
+                    currentView = 'month';
+                    elCalendar.style.display = 'block';
+                    elYearView.classList.remove('active');
+                    btnMonth.classList.add('active');
+                    btnYear.classList.remove('active');
+                    break;
+                case 'view-year':
+                    currentView = 'year';
+                    elCalendar.style.display = 'none';
+                    elYearView.classList.add('active');
+                    btnMonth.classList.remove('active');
+                    btnYear.classList.add('active');
+                    break;
+            }
+
+            // Refresh UI
+            updateTitle();
+            if (currentView === 'year') {
+                renderYearView();
+            }
+        }
+
+        // Attach Click Listener to Nav
+        document.querySelector('nav').addEventListener('click', e => {
+            if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
+                onClickDetails(e);
+            }
+        });
+
+        // Keyboard support
+        document.addEventListener('keydown', e => {
+            if (e.key === 'ArrowRight') { calendar.next(); updateTitle(); if (currentView === 'year') renderYearView(); }
+            if (e.key === 'ArrowLeft') { calendar.prev(); updateTitle(); if (currentView === 'year') renderYearView(); }
+        });
+
+        // Initial render
+        updateTitle();
+    </script>
+
+</body>
+
+</html>
