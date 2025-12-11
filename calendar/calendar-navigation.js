@@ -56,7 +56,7 @@ class CalendarNavigation {
         // Refresh UI
         this.updateTitle();
         if (this.currentView === 'year') {
-            this.renderYearView();
+            this.renderYearView(this.events, this.currentView);
         }
     }
 
@@ -67,62 +67,53 @@ class CalendarNavigation {
         this.elTitle.textContent = currentView === 'month' ? `${month} ${year}` : `${year}`;
     }
 
-    renderYearView(events, currentView) {
+    renderYearView(events) {
         this.elYearView.innerHTML = '';
-        const currentDate = this.calendarRenderer.getDate().toDate();
-        const currentYear = currentDate.getFullYear();
-        const currentMonthIndex = currentDate.getMonth();
 
-        const allMonths = [
+        const currentDate = this.calendarRenderer.getDate().toDate();
+        const startMonthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+
+        const labels = [
             "January", "February", "March", "April", "May", "June",
             "July", "August", "September", "October", "November", "December"
         ];
 
-        const monthsToShow = [
-            (currentMonthIndex - 1 + 12) % 12,
-            currentMonthIndex,
-            (currentMonthIndex + 1) % 12
-        ];
+        for (let i = 0; i < 13; i++) {
+            const d = new Date(startMonthDate.getFullYear(), startMonthDate.getMonth() + i, 1);
 
-        const yearsEvents = events.filter(e => e.start.startsWith(currentYear.toString()));
+            const year = d.getFullYear();
+            const monthIndex = d.getMonth();
+            const monthName = labels[monthIndex];
+            const monthStr = `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
 
-        monthsToShow.forEach(monthIndex => {
-            const monthName = allMonths[monthIndex];
-            const monthStr = `${currentYear}-${(monthIndex + 1).toString().padStart(2, '0')}`;
-            const monthEvents = yearsEvents.filter(e => e.start.startsWith(monthStr));
+            // 🔥 Show BOTH monthly + annual events
+            const monthEvents = events.filter(e => e.start.substring(0, 7) === monthStr);
 
             const card = document.createElement('div');
             card.className = 'month-card';
 
-            let html = `<div class="month-name">${monthName}</div>`;
+            let html = `<div class="month-name">${monthName} ${year}</div>`;
             let totalAmount = 0;
 
             if (monthEvents.length === 0) {
                 html += `<div style="color:#999; font-style:italic; font-size:0.9rem;">No events</div>`;
             } else {
                 monthEvents.forEach(e => {
-                    let amountStr = "";
-                    if (e.amount) {
-                        const val = parseFloat(e.amount.replace('$', ''));
-                        if (!isNaN(val)) totalAmount += val;
-                        amountStr = `<span style="font-weight:bold;">${e.amount}</span>`;
-                    }
-
-                    html += `<div class="event-item" style="border-left-color: ${e.backgroundColor || '#ccc'}">
-                        <span>${e.title}</span>
-                        ${amountStr}
-                    </div>`;
+                    let amt = e.amount ? `<strong>${e.amount}</strong>` : '';
+                    html += `
+                <div class="event-item" style="border-left-color:${e.backgroundColor || '#ccc'}">
+                    <span>${e.title}</span>
+                    ${amt}
+                </div>`;
                 });
-            }
-
-            if (totalAmount > 0) {
-                html += `<div class="total-row"><span>Total Payments</span><span>$${totalAmount.toFixed(2)}</span></div>`;
             }
 
             card.innerHTML = html;
             this.elYearView.appendChild(card);
-        });
+        }
     }
+
+
 
     updateTableLink(url, defaultUrl, linkEl) {
         const params = new URLSearchParams();
