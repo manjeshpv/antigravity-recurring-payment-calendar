@@ -26,6 +26,50 @@
             flex-direction: column;
         }
 
+        /* Config Bar */
+        .config-bar {
+            background: #fff;
+            padding: 10px 30px;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+
+        .config-bar input {
+            flex: 1;
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: inherit;
+        }
+
+        .config-bar .btn-load {
+            background: var(--primary);
+            color: white;
+            border: none;
+        }
+
+        .config-bar .btn-load:hover {
+            background: #0056b3;
+        }
+
+        .template-link {
+            font-size: 0.8rem;
+            color: #666;
+            margin-left: 10px;
+        }
+
+        .template-link a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .template-link a:hover {
+            text-decoration: underline;
+        }
+
         /* Navigation Bar */
         nav {
             background: var(--white);
@@ -149,6 +193,16 @@
 
 <body>
 
+    <div class="config-bar">
+        <label for="sheet-url">Sheet URL:</label>
+        <input type="text" id="sheet-url" placeholder="https://docs.google.com/spreadsheets/d/...">
+        <button id="btn-load-sheet" class="btn-load">Load</button>
+        <span class="template-link">
+            <a href="https://docs.google.com/spreadsheets/d/1Dpl_UdIL_TS-6pJMQosp3h1clHiMY7imtCMiidFuhzY/copy"
+                target="_blank" rel="noopener noreferrer">Use Template</a>
+        </span>
+    </div>
+
     <nav>
         <div class="nav-group">
             <button class="icon-btn" id="btn-prev">&lt;</button>
@@ -270,10 +324,31 @@
         // -----------------------------
         // Fetch & Load Events
         // -----------------------------
-        const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1Dpl_UdIL_TS-6pJMQosp3h1clHiMY7imtCMiidFuhzY/export?format=csv';
+        const DEFAULT_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1Dpl_UdIL_TS-6pJMQosp3h1clHiMY7imtCMiidFuhzY';
 
-        function loadGoogleSheetEvents() {
-            Papa.parse(SHEET_URL, {
+        // Helper: Convert View URL to Export URL
+        function getExportUrl(url) {
+            // If already an export URL, return as is
+            if (url.includes('/export?')) return url;
+
+            // Pattern for standard google sheet url
+            // https://docs.google.com/spreadsheets/d/SHEET_ID/edit...
+            const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+            if (match && match[1]) {
+                return `https://docs.google.com/spreadsheets/d/${match[1]}/export?format=csv`;
+            }
+
+            return url;
+        }
+
+        function loadGoogleSheetEvents(sheetUrl) {
+            const csvUrl = getExportUrl(sheetUrl);
+
+            // Clear existing events before loading new ones
+            calendar.clear();
+            events.length = 0;
+
+            Papa.parse(csvUrl, {
                 download: true,
                 header: true,
                 skipEmptyLines: true,
@@ -304,30 +379,65 @@
                         };
                     }).filter(e => e !== null);
 
-                    // Combine with local events if needed
-                    // existing 'expandEvents(rawEvents)' from prev step could be merged here
-                    // For now, let's show BOTH:
-
-
-                    // 2. Add Sheet Events
                     const allEvents = [...sheetEvents];
 
                     calendar.createEvents(allEvents);
 
-                    // Also trigger Year View update in case we are in that view
-                    events.length = 0; // Clear proxy array
-                    events.push(...allEvents); // Update global events array for Year View
+                    // Update global events array for Year View
+                    events.push(...allEvents);
                     updateTitle();
+
+                    // Render year view if currently active
+                    if (currentView === 'year') {
+                        renderYearView();
+                    }
                 },
                 error: function (err) {
                     console.error("Error loading sheet:", err);
-                    alert("Failed to load Google Sheet. Check console for CORS or network errors.");
+                    alert("Failed to load Google Sheet. Please check the URL and ensure 'Anyone with the link' can view.");
                 }
             });
         }
 
-        // Start Loading
-        loadGoogleSheetEvents();
+
+        // -----------------------------
+        // URL Parameter & Input Handling
+        // -----------------------------
+        const urlInput = document.getElementById('sheet-url');
+        const loadBtn = document.getElementById('btn-load-sheet');
+
+        function init() {
+            // Check URL Params
+            const params = new URLSearchParams(window.location.search);
+            let sheetUrl = params.get('sheet');
+
+            if (!sheetUrl) {
+                sheetUrl = DEFAULT_SHEET_URL;
+            }
+
+            // Set Input
+            urlInput.value = sheetUrl;
+
+            // Load Events
+            loadGoogleSheetEvents(sheetUrl);
+        }
+
+        // Handle "Load" Button
+        loadBtn.addEventListener('click', () => {
+            const newUrl = urlInput.value.trim();
+            if (!newUrl) return;
+
+            // Update URL Params without reload
+            const newParams = new URLSearchParams(window.location.search);
+            newParams.set('sheet', newUrl);
+            window.history.pushState({}, '', '?' + newParams.toString());
+
+            // Reload Data
+            loadGoogleSheetEvents(newUrl);
+        });
+
+        // Initialize App
+        init();
 
 
         // -----------------------------
