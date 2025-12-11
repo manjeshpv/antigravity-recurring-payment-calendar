@@ -1,3 +1,4 @@
+
 :root {
     --primary: #007bff;
     --bg: #f5f5f5;
@@ -211,4 +212,127 @@ main {
     display: flex;
     justify-content: space-between;
     font-weight: bold;
+}
+
+/* ---------------------------------------------------
+   MOBILE RESPONSIVE FIXES
+---------------------------------------------------- */
+@media (max-width: 768px) {
+
+    body {
+        height: auto; /* prevents weird iPhone zoom issue */
+    }
+
+    /* Config bar stacks nicely */
+    .config-bar {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 12px;
+    }
+
+    .config-bar input {
+        width: 100%;
+    }
+
+    .template-link {
+        margin-left: 0;
+    }
+
+    /* Top nav shrinks + centers */
+    .app-nav {
+        flex-direction: column;
+        padding: 12px;
+        text-align: center;
+        gap: 8px;
+    }
+
+    .app-nav-title {
+        font-size: 1.2rem;
+    }
+
+    .nav-links {
+        display: flex;
+        gap: 6px;
+    }
+
+    .nav-links a {
+        padding: 6px 10px;
+        font-size: 0.85rem;
+        margin-left: 0;
+    }
+
+    /* Toolbar goes vertical on mobile */
+    .toolbar {
+        flex-direction: column;
+        gap: 10px;
+        padding: 12px;
+    }
+
+    .nav-group {
+        justify-content: center;
+        width: 100%;
+        gap: 8px;
+    }
+
+    .calendar-title {
+        font-size: 1rem;
+        min-width: auto;
+    }
+
+    button {
+        padding: 6px 10px;
+        font-size: 0.85rem;
+    }
+
+    /* Main container spacing */
+    main {
+        padding: 10px;
+    }
+
+    /* Dynamic calendar height fix */
+    #calendar {
+        height: calc(100vh - 260px); /* toolbar + nav + config bar */
+    }
+
+    /* Year view → 2 columns */
+    #year-view {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px;
+    }
+
+    .month-card {
+        padding: 12px;
+        font-size: 0.9rem;
+    }
+
+    .month-name {
+        font-size: 1rem;
+        margin-bottom: 10px;
+    }
+
+    .event-item {
+        font-size: 0.78rem;
+        padding: 4px 8px;
+    }
+}
+
+/* Very small screens (iPhone SE, older Androids) */
+@media (max-width: 480px) {
+
+    #year-view {
+        grid-template-columns: repeat(1, 1fr) !important;
+    }
+
+    .nav-links {
+        flex-wrap: wrap;
+    }
+
+    button {
+        font-size: 0.8rem;
+        padding: 5px 8px;
+    }
+
+    #calendar {
+        height: calc(100vh - 300px);
+    }
 }
