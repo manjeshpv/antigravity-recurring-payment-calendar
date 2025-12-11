@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Antigravity - Recurring Payment Calendar</title>
+
+    <!-- Toast UI Calendar CSS -->
+    <link rel="stylesheet" href="https://uicdn.toast.com/calendar/latest/toastui-calendar.min.css" />
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+    <div class="config-bar">
+        <label for="sheet-url">Sheet URL:</label>
+        <input type="text" id="sheet-url" placeholder="https://docs.google.com/spreadsheets/d/...">
+        <button id="btn-load-sheet" class="btn-load">Load</button>
+        <span class="template-link">
+            <a href="https://docs.google.com/spreadsheets/d/1Dpl_UdIL_TS-6pJMQosp3h1clHiMY7imtCMiidFuhzY/copy"
+                target="_blank" rel="noopener noreferrer">Use Template</a>
+        </span>
+    </div>
+
+    <nav class="app-nav">
+        <div class="app-nav-title">Antigravity - Recurring Payment Calendar</div>
+        <div class="nav-links">
+            <a href="/" id="link-table">Table View</a>
+            <a href="/calendar" class="active">Calendar View</a>
+        </div>
+    </nav>
+
+    <div class="toolbar">
+        <div class="nav-group">
+            <button class="icon-btn" id="btn-prev">&lt;</button>
+            <button id="btn-today">Today</button>
+            <button class="icon-btn" id="btn-next">&gt;</button>
+        </div>
+
+        <div class="calendar-title" id="calendar-title"></div>
+
+        <div class="nav-group">
+            <button id="view-day">Day</button>
+            <button id="view-week">Week</button>
+            <button id="view-month">Month</button>
+            <button id="view-year" class="active">Year</button>
+        </div>
+    </div>
+
+    <main>
+        <div id="calendar"></div>
+        <div id="year-view"></div>
+    </main>
+
+    <!-- Toast UI Calendar JS -->
+    <script src="https://uicdn.toast.com/calendar/latest/toastui-calendar.min.js"></script>
+    <!-- PapaParse for CSV -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <!-- Load Events Data (Optional Fallback) -->
+    <!-- Your App Scripts -->
+    <script src="google-sheet-loader.js"></script>
+    <script src="event-generator.js"></script>
+    <script src="calendar-renderer.js"></script>
+    <script src="calendar-navigation.js"></script>
+    <script src="calendar-app.js"></script>
+
+</body>
+
+</html>

@@ -1,0 +1,214 @@
+:root {
+    --primary: #007bff;
+    --bg: #f5f5f5;
+    --white: #ffffff;
+    --text: #333;
+}
+
+body {
+    margin: 0;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Config Bar */
+.config-bar {
+    background: #fff;
+    padding: 10px 30px;
+    border-bottom: 1px solid #ddd;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    font-size: 0.9rem;
+}
+
+.config-bar input {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-family: inherit;
+}
+
+.config-bar .btn-load {
+    background: var(--primary);
+    color: white;
+    border: none;
+}
+
+.config-bar .btn-load:hover {
+    background: #0056b3;
+}
+
+.template-link {
+    font-size: 0.8rem;
+    color: #666;
+    margin-left: 10px;
+}
+
+.template-link a {
+    color: var(--primary);
+    text-decoration: none;
+}
+
+.template-link a:hover {
+    text-decoration: underline;
+}
+
+/* Top Navigation Bar */
+.app-nav {
+    background: var(--white);
+    padding: 15px 30px;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+}
+
+.app-nav-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.nav-links a {
+    text-decoration: none;
+    color: var(--text);
+    padding: 8px 16px;
+    border-radius: 6px;
+    transition: background 0.2s;
+    margin-left: 10px;
+    border: 1px solid #ddd;
+}
+
+.nav-links a:hover {
+    background: #f0f0f0;
+}
+
+.nav-links a.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+/* Calendar Toolbar */
+.toolbar {
+    background: var(--white);
+    padding: 15px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+}
+
+.nav-group {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.calendar-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    min-width: 200px;
+    text-align: center;
+}
+
+button {
+    padding: 8px 16px;
+    border: 1px solid #ddd;
+    background: var(--white);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+button:hover {
+    background: #f8f9fa;
+    border-color: #ccc;
+}
+
+button.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.icon-btn {
+    padding: 8px 12px;
+}
+
+/* Main Content Area */
+main {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    padding: 20px;
+}
+
+/* Calendar View */
+#calendar {
+    height: 100%;
+    background: var(--white);
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    /* Toast UI override */
+    border: none !important;
+}
+
+/* Year View (Hidden by default) */
+#year-view {
+    display: none;
+    height: 100%;
+    overflow-y: auto;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    padding-bottom: 20px;
+}
+
+#year-view.active {
+    display: grid;
+}
+
+/* Updates for dark mode compatibility if needed later */
+.month-card {
+    background: var(--white);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    border: 1px solid #eee;
+}
+
+.month-name {
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin-bottom: 15px;
+    color: var(--primary);
+    border-bottom: 2px solid #f0f0f0;
+    padding-bottom: 10px;
+}
+
+.event-item {
+    padding: 6px 10px;
+    margin-bottom: 6px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    display: flex;
+    justify-content: space-between;
+    border-left: 3px solid transparent;
+}
+
+.total-row {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px dashed #ddd;
+    display: flex;
+    justify-content: space-between;
+    font-weight: bold;
+}
