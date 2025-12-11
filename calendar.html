@@ -367,27 +367,134 @@
         // -----------------------------
         // Fetch & Load Events
         // -----------------------------
+        // -----------------------------
+        // Fetch & Load Events
+        // -----------------------------
         const DEFAULT_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1Dpl_UdIL_TS-6pJMQosp3h1clHiMY7imtCMiidFuhzY';
 
         // Helper: Convert View URL to Export URL
         function getExportUrl(url) {
-            // If already an export URL, return as is
-            if (url.includes('/export?')) return url;
+            // Check if it's already a CSV export or GViz URL
+            if (url.includes('/export?') || url.includes('/gviz/tq?')) return url;
 
-            // Pattern for standard google sheet url
-            // https://docs.google.com/spreadsheets/d/SHEET_ID/edit...
             const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
             if (match && match[1]) {
-                return `https://docs.google.com/spreadsheets/d/${match[1]}/export?format=csv`;
+                // Use Google Visualization API to fetch by Sheet Name ("Master")
+                return `https://docs.google.com/spreadsheets/d/${match[1]}/gviz/tq?tqx=out:csv&sheet=Master`;
             }
-
             return url;
+        }
+
+        // Helper: Get color based on category/type (simple hash)
+        function getColor(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                hash = str.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
+            return '#' + '00000'.substring(0, 6 - c.length) + c;
+        }
+
+        function generateDynamicEvents(masterRows) {
+            const generatedEvents = [];
+            const today = new Date();
+            const currentYear = today.getFullYear();
+            const currentMonth = today.getMonth(); // 0-11
+
+            masterRows.forEach((row, index) => {
+                // Required fields
+                if (!row['Account'] && !row['Accoount']) return; // Handle typo
+
+                const account = row['Account'] || row['Accoount'];
+                const ledger = row['Ledger Name'] || '';
+                const title = `${account} (${ledger})`;
+
+                const freq = (row['Frequency'] || '').toLowerCase();
+                const dueVal = row['Due Date']; // Can be "1", "01", "1/1/2025" or "2025-01-01"
+
+                // Helper to parse day from various formats
+                let day = 1;
+                let specificDate = null;
+
+                if (dueVal) {
+                    if (dueVal.includes('/') || dueVal.includes('-')) {
+                        // It's a full date
+                        specificDate = new Date(dueVal);
+                        if (!isNaN(specificDate.getTime())) {
+                            day = specificDate.getDate();
+                        }
+                    } else {
+                        // It's just a day number
+                        day = parseInt(dueVal, 10);
+                    }
+                }
+
+                if (isNaN(day)) day = 1;
+
+                // --- recurrence logic ---
+
+                if (freq.includes('monthly')) {
+                    // Generate for Current Month
+                    const date1 = new Date(currentYear, currentMonth, day);
+                    // Generate for Next Month
+                    const date2 = new Date(currentYear, currentMonth + 1, day);
+
+                    [date1, date2].forEach((d, i) => {
+                        generatedEvents.push({
+                            id: `master-${index}-m${i}`,
+                            calendarId: 'master',
+                            title: title,
+                            body: `Expense: ${row['Expense Type'] || ''}\nMethod: ${row['Payment Method'] || ''}\nBudget: ${row['Budget'] || ''}`,
+                            start: d.toISOString(),
+                            end: d.toISOString(), // All day or same time
+                            category: 'allday', // Using allday for simplicity
+                            backgroundColor: getColor(row['Payment Category'] || 'default'),
+                            amount: row['Budget'] // Store amount for year view summing
+                        });
+                    });
+
+                } else if (freq.includes('annually') || freq.includes('yearly')) {
+                    // Annual event
+                    // If specific date provided, use its month/day. If just day provided? Ambiguous, assume Jan? 
+                    // Usually annual events have a specific date.
+
+                    let annualMonth = 0; // Default Jan
+                    let annualDay = day;
+
+                    if (specificDate) {
+                        annualMonth = specificDate.getMonth();
+                        annualDay = specificDate.getDate();
+                    }
+
+                    // Generate for this year
+                    const d = new Date(currentYear, annualMonth, annualDay);
+
+                    // Only show if it matches the logic "till end of this year"
+                    // (Actually standard calendar shows all annual events for the year usually)
+                    // We will just add it for the current year.
+
+                    generatedEvents.push({
+                        id: `master-${index}-a`,
+                        calendarId: 'master',
+                        title: title,
+                        body: `Expense: ${row['Expense Type'] || ''}\nMethod: ${row['Payment Method'] || ''}\nBudget: ${row['Budget'] || ''}`,
+                        start: d.toISOString(),
+                        end: d.toISOString(),
+                        category: 'allday',
+                        backgroundColor: getColor(row['Payment Category'] || 'default'),
+                        amount: row['Budget']
+                    });
+                }
+                // Handle one-time or other frequencies later if needed
+            });
+
+            return generatedEvents;
         }
 
         function loadGoogleSheetEvents(sheetUrl) {
             const csvUrl = getExportUrl(sheetUrl);
 
-            // Clear existing events before loading new ones
+            // Clear existing events
             calendar.clear();
             events.length = 0;
 
@@ -398,46 +505,22 @@
                 complete: function (results) {
                     console.log("Sheet Loaded:", results.data);
 
-                    const sheetEvents = results.data.map((row, index) => {
-                        // Map CSV columns to Calendar Event Object
-                        // CSV: Event Title, Date, Start Time, End Time, Description, Location, Guests, Event Color
+                    // Generate Events dynamically
+                    const dynamicEvents = generateDynamicEvents(results.data);
 
-                        // Skip if missing essential data
-                        if (!row['Event Title'] || !row['Date']) return null;
-
-                        const startISO = parseDateTime(row['Date'], row['Start Time']);
-                        const endISO = parseDateTime(row['Date'], row['End Time']);
-
-                        return {
-                            id: 'sheet-' + index,
-                            calendarId: 'google-sheet',
-                            title: row['Event Title'],
-                            body: row['Description'] || '',
-                            location: row['Location'] || '',
-                            start: startISO,
-                            end: endISO,
-                            category: 'time',
-                            backgroundColor: row['Event Color'] || '#007bff',
-                            attendees: row['Guests'] ? row['Guests'].split(',') : []
-                        };
-                    }).filter(e => e !== null);
-
-                    const allEvents = [...sheetEvents];
-
-                    calendar.createEvents(allEvents);
+                    calendar.createEvents(dynamicEvents);
 
                     // Update global events array for Year View
-                    events.push(...allEvents);
+                    events.push(...dynamicEvents);
                     updateTitle();
 
-                    // Render year view if currently active
                     if (currentView === 'year') {
                         renderYearView();
                     }
                 },
                 error: function (err) {
                     console.error("Error loading sheet:", err);
-                    alert("Failed to load Google Sheet. Please check the URL and ensure 'Anyone with the link' can view.");
+                    alert("Failed to load Google Sheet. Please check the URL.");
                 }
             });
         }
