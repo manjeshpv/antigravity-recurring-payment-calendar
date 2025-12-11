@@ -70,15 +70,50 @@
             text-decoration: underline;
         }
 
-        /* Navigation Bar */
-        nav {
+        /* Top Navigation Bar */
+        .app-nav {
             background: var(--white);
             padding: 15px 30px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 1px 0 rgba(0, 0, 0, 0.05);
             display: flex;
             justify-content: space-between;
             align-items: center;
             z-index: 10;
+        }
+
+        .app-nav-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--text);
+            padding: 8px 16px;
+            border-radius: 6px;
+            transition: background 0.2s;
+            margin-left: 10px;
+            border: 1px solid #ddd;
+        }
+
+        .nav-links a:hover {
+            background: #f0f0f0;
+        }
+
+        .nav-links a.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* Calendar Toolbar */
+        .toolbar {
+            background: var(--white);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #eee;
         }
 
         .nav-group {
@@ -87,9 +122,9 @@
             gap: 15px;
         }
 
-        .nav-title {
-            font-size: 1.5rem;
-            font-weight: bold;
+        .calendar-title {
+            font-size: 1.2rem;
+            font-weight: 600;
             min-width: 200px;
             text-align: center;
         }
@@ -203,20 +238,28 @@
         </span>
     </div>
 
-    <nav>
+    <nav class="app-nav">
+        <div class="app-nav-title">Master Sheet Overview</div>
+        <div class="nav-links">
+            <a href="index.html" id="link-table">Table View</a>
+            <a href="#" class="active">Calendar View</a>
+        </div>
+    </nav>
+
+    <div class="toolbar">
         <div class="nav-group">
             <button class="icon-btn" id="btn-prev">&lt;</button>
             <button id="btn-today">Today</button>
             <button class="icon-btn" id="btn-next">&gt;</button>
         </div>
 
-        <div class="nav-title" id="calendar-title"></div>
+        <div class="calendar-title" id="calendar-title"></div>
 
         <div class="nav-group">
             <button id="view-month" class="active">Month</button>
             <button id="view-year">Year</button>
         </div>
-    </nav>
+    </div>
 
     <main>
         <div id="calendar"></div>
@@ -405,6 +448,7 @@
         // -----------------------------
         const urlInput = document.getElementById('sheet-url');
         const loadBtn = document.getElementById('btn-load-sheet');
+        const linkTable = document.getElementById('link-table');
 
         function init() {
             // Check URL Params
@@ -418,8 +462,21 @@
             // Set Input
             urlInput.value = sheetUrl;
 
+            // Update Table Link to persist the sheet param
+            updateTableLink(sheetUrl);
+
             // Load Events
             loadGoogleSheetEvents(sheetUrl);
+        }
+
+        function updateTableLink(url) {
+            const params = new URLSearchParams();
+            if (url && url !== DEFAULT_SHEET_URL) {
+                params.set('sheet', url);
+                linkTable.href = `index.html?${params.toString()}`;
+            } else {
+                linkTable.href = 'index.html';
+            }
         }
 
         // Handle "Load" Button
@@ -431,6 +488,9 @@
             const newParams = new URLSearchParams(window.location.search);
             newParams.set('sheet', newUrl);
             window.history.pushState({}, '', '?' + newParams.toString());
+
+            // Update Table Link
+            updateTableLink(newUrl);
 
             // Reload Data
             loadGoogleSheetEvents(newUrl);
@@ -572,8 +632,8 @@
             }
         }
 
-        // Attach Click Listener to Nav
-        document.querySelector('nav').addEventListener('click', e => {
+        // Attach Click Listener to Toolbar
+        document.querySelector('.toolbar').addEventListener('click', e => {
             if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
                 onClickDetails(e);
             }

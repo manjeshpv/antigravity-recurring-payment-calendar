@@ -3,19 +3,372 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Redirecting…</title>
+    <title>Master Sheet Dashboard</title>
 
-    <!-- Option 1: Meta-refresh redirect -->
-    <meta http-equiv="refresh" content="0; URL=calendar.html" />
+    <style>
+        :root {
+            --primary: #007bff;
+            --bg: #f5f5f5;
+            --white: #ffffff;
+            --text: #333;
+            --border: #ddd;
+        }
 
-    <!-- Option 2: JS redirect (backup) -->
-    <script>
-        window.location.href = "calendar.html";
-    </script>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Config Bar (Shared Style) */
+        .config-bar {
+            background: #fff;
+            padding: 10px 30px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+
+        .config-bar input {
+            flex: 1;
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: inherit;
+        }
+
+        .config-bar .btn-load {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 7px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .config-bar .btn-load:hover {
+            background: #0056b3;
+        }
+
+        .template-link {
+            font-size: 0.8rem;
+            color: #666;
+            margin-left: 10px;
+        }
+
+        .template-link a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .template-link a:hover {
+            text-decoration: underline;
+        }
+
+        /* Navigation Bar */
+        nav {
+            background: var(--white);
+            padding: 15px 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .nav-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--text);
+            padding: 8px 16px;
+            border-radius: 6px;
+            transition: background 0.2s;
+            margin-left: 10px;
+            border: 1px solid var(--border);
+        }
+
+        .nav-links a:hover {
+            background: #f0f0f0;
+        }
+
+        .nav-links a.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* Main Content Area */
+        main {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+        }
+
+        /* Table Styles */
+        .table-container {
+            background: var(--white);
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        th,
+        td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #555;
+            position: sticky;
+            top: 0;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover {
+            background-color: #fafafa;
+        }
+
+        .empty-state {
+            padding: 40px;
+            text-align: center;
+            color: #888;
+            font-style: italic;
+        }
+    </style>
 </head>
 
 <body>
-    Redirecting to calendar…
+
+    <div class="config-bar">
+        <label for="sheet-url">Sheet URL:</label>
+        <input type="text" id="sheet-url" placeholder="https://docs.google.com/spreadsheets/d/...">
+        <button id="btn-load-sheet" class="btn-load">Load</button>
+        <span class="template-link">
+            <a href="https://docs.google.com/spreadsheets/d/1Dpl_UdIL_TS-6pJMQosp3h1clHiMY7imtCMiidFuhzY/copy"
+                target="_blank" rel="noopener noreferrer">Use Template</a>
+        </span>
+    </div>
+
+    <nav>
+        <div class="nav-title">Master Sheet Overview</div>
+        <div class="nav-links">
+            <a href="#" class="active">Table View</a>
+            <a href="calendar.html" id="link-calendar">Calendar View</a>
+        </div>
+    </nav>
+
+    <main>
+        <div class="table-container">
+            <table id="data-table">
+                <thead>
+                    <tr>
+                        <th>Frequency</th>
+                        <th>Due Date</th>
+                        <th>Account Number</th>
+                        <th>Account</th> <!-- Fixed typo from request 'Accoount' -->
+                        <th>Expense Type</th>
+                        <th>Payment Category</th>
+                        <th>Ledger Name</th>
+                        <th>Payment Method</th>
+                        <th>Budget</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Data rows will be inserted here -->
+                </tbody>
+            </table>
+            <div id="loading-state" class="empty-state">Loading data...</div>
+        </div>
+    </main>
+
+    <!-- PapaParse for CSV -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+    <script>
+        // -----------------------------
+        // Configuration & Helpers
+        // -----------------------------
+        const DEFAULT_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1Dpl_UdIL_TS-6pJMQosp3h1clHiMY7imtCMiidFuhzY';
+
+        // Helper: Convert View URL to Export URL
+        function getExportUrl(url) {
+            // Check if it's already a CSV export or GViz URL
+            if (url.includes('/export?') || url.includes('/gviz/tq?')) return url;
+
+            const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+            if (match && match[1]) {
+                // Use Google Visualization API to fetch by Sheet Name ("Master")
+                // Format: /gviz/tq?tqx=out:csv&sheet={SheetName}
+                return `https://docs.google.com/spreadsheets/d/${match[1]}/gviz/tq?tqx=out:csv&sheet=Master`;
+            }
+            return url;
+        }
+
+        // -----------------------------
+        // Data Loading Logic
+        // -----------------------------
+        const tableBody = document.querySelector('#data-table tbody');
+        const loadingState = document.getElementById('loading-state');
+        const REQUESTED_COLUMNS = [
+            'Frequency',
+            'Due Date',
+            'Account Number',
+            'Account', // Trying both 'Account' and 'Accoount' in logic below if helpful, or just strict match
+            'Expense Type',
+            'Payment Category',
+            'Ledger Name',
+            'Payment Method',
+            'Budget'
+        ];
+
+        // Variant mapping for the typo mentioned
+        const COL_VARIANTS = {
+            'Account': ['Account', 'Accoount']
+        };
+
+        function getColValue(row, colName) {
+            // Check exact match
+            if (row[colName] !== undefined) return row[colName];
+
+            // Check variants
+            if (COL_VARIANTS[colName]) {
+                for (let variant of COL_VARIANTS[colName]) {
+                    if (row[variant] !== undefined) return row[variant];
+                }
+            }
+
+            return ''; // Default empty
+        }
+
+        function renderTable(data) {
+            tableBody.innerHTML = '';
+
+            if (data.length === 0) {
+                loadingState.textContent = 'No data found found in the sheet.';
+                loadingState.style.display = 'block';
+                return;
+            }
+
+            loadingState.style.display = 'none';
+
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+
+                // If the row is empty (PapaParse usually handles skipEmptyLines, but good to check)
+                if (Object.keys(row).length === 0) return;
+
+                REQUESTED_COLUMNS.forEach(col => {
+                    const td = document.createElement('td');
+                    td.textContent = getColValue(row, col);
+                    tr.appendChild(td);
+                });
+
+                tableBody.appendChild(tr);
+            });
+        }
+
+        function loadGoogleSheet(sheetUrl) {
+            const csvUrl = getExportUrl(sheetUrl);
+            loadingState.textContent = 'Loading...';
+            loadingState.style.display = 'block';
+            tableBody.innerHTML = '';
+
+            Papa.parse(csvUrl, {
+                download: true,
+                header: true,
+                skipEmptyLines: true,
+                complete: function (results) {
+                    console.log("Sheet Loaded:", results.data);
+                    renderTable(results.data);
+                },
+                error: function (err) {
+                    console.error("Error loading sheet:", err);
+                    loadingState.textContent = "Failed to load Google Sheet. Please check the URL.";
+                }
+            });
+        }
+
+        // -----------------------------
+        // URL Parameter & Input Handling
+        // -----------------------------
+        const urlInput = document.getElementById('sheet-url');
+        const loadBtn = document.getElementById('btn-load-sheet');
+        const linkCalendar = document.getElementById('link-calendar');
+
+        function init() {
+            // Check URL Params
+            const params = new URLSearchParams(window.location.search);
+            let sheetUrl = params.get('sheet');
+
+            if (!sheetUrl) {
+                sheetUrl = DEFAULT_SHEET_URL;
+            }
+
+            // Set Input
+            urlInput.value = sheetUrl;
+
+            // Update Calendar Link to persist the sheet param
+            updateCalendarLink(sheetUrl);
+
+            // Load Data
+            loadGoogleSheet(sheetUrl);
+        }
+
+        function updateCalendarLink(url) {
+            const params = new URLSearchParams();
+            if (url && url !== DEFAULT_SHEET_URL) {
+                params.set('sheet', url);
+                linkCalendar.href = `calendar.html?${params.toString()}`;
+            } else {
+                linkCalendar.href = 'calendar.html';
+            }
+        }
+
+        // Handle "Load" Button
+        loadBtn.addEventListener('click', () => {
+            const newUrl = urlInput.value.trim();
+            if (!newUrl) return;
+
+            // Update URL Params without reload
+            const newParams = new URLSearchParams(window.location.search);
+            newParams.set('sheet', newUrl);
+            window.history.pushState({}, '', '?' + newParams.toString());
+
+            // Update Calendar Link
+            updateCalendarLink(newUrl);
+
+            // Reload Data
+            loadGoogleSheet(newUrl);
+        });
+
+        // Initialize App
+        init();
+
+    </script>
 </body>
 
 </html>
